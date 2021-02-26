@@ -73,7 +73,7 @@ bcoords = np.c_[b, 1 - b.sum(axis=1)]
 #print(f'bcoords: {bcoords}')
 #print(f'akp: {assignedKeyPoints}')
 
-output = np.flip( np.sum( (newArray * bcoords[:,:,np.newaxis]), axis=-2 ), axis=1 )
+output = np.flip( np.sum( (newArray * bcoords[:,:,np.newaxis]), axis=-2 ), axis=1)
 print(f'Shape: {output.shape}')
 
 print(f'LUT_3D_SIZE {size}')
