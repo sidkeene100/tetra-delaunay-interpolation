@@ -96,7 +96,7 @@ def printCubeFile(lutArray):
     for b in lutArray:
         for g in b:
             for r in g:
-                print(f'{r[2]} {r[1]} {r[0]}') #does this work?
+                print(f'{r[0]} {r[1]} {r[2]}') #does this work?
 
 def loadKeypointsFromCSV(filename):
     with open(filename) as csv_file:
@@ -135,7 +135,7 @@ def main():
     global tessellation
 
     #print("bla")
-    loadKeypointsFromCSV('Datasets/keypointsKodak.csv')
+    loadKeypointsFromCSV('Datasets/keypointsKodak2.csv')
 
     #list(np.asarray(keyAsTuple, dtype=np.float64)
 
