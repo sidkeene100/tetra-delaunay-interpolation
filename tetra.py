@@ -75,9 +75,9 @@ def generate3DLUT(size, cubeSize):
     #print(f'size = {size}')
     lut = np.empty((size, size, size, 3), order='C')
 
-    for red in range(size):
+    for blue in range(size):
         for green in range(size):
-            for blue in range(size):
+            for red in range(size):
                 r, g, b = red*cubeSize/(size-1), green*cubeSize/(size-1), blue*cubeSize/(size-1)
                 #print(f'======STARTING 3D LUT GENERATION for point: red={r}, green={g}, blue={b}======')
                 p = np.array([r, g, b])
@@ -135,7 +135,7 @@ def main():
     global tessellation
 
     #print("bla")
-    loadKeypointsFromCSV('Datasets/keypointsKodak2.csv')
+    loadKeypointsFromCSV('Datasets/keypointsYellow.csv')
 
     #list(np.asarray(keyAsTuple, dtype=np.float64)
 
