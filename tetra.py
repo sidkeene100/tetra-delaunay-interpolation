@@ -88,7 +88,7 @@ def printCubeFile(lutArray):
     for slice in lutArray:
         for line in slice:
             for point in line:
-                print(f'{point[0]} {point[1]} {point[2]}')
+                print(f'{point[2]} {point[1]} {point[0]}') #SWAPPED ¯\_(ツ)_/¯
 
 def loadKeypointsFromCSV(filename):
     '''Loads keypoints from a CSV. Format: rIn,gIn,bIn,rOut,gOut,bOut, disregards first line.'''
@@ -124,7 +124,7 @@ def main():
 
     global tessellation
 
-    loadKeypointsFromCSV('Datasets/keypointsYellow.csv')
+    loadKeypointsFromCSV('Datasets/keypointsKodak.csv')
 
     keypoints = getAllKeypointsAsNumpyArray()
     tessellation = tessellate(keypoints)
