@@ -4,24 +4,30 @@ import math
 import csv
 import sys
 
-nv = np.array([-1.0, -1.0, -1.0])
+#GLOBAL DEFINITIONS:
+nv = np.array([-1.0, -1.0, -1.0]) #value to use for out-of-gamut points
 
 #TODO: proper gamut mapping
 #add documentation
 #R and B are getting swapped on input?
+#Remove hard coded args, get args from CLI
 
 def isInvalid(point):
+    '''Given a point (type np.array, size 3), determines if the point is valid or out-of-gamut.'''
     if point[0] == nv[0] or point[1] == nv[1] or point[2] == nv[2]:
         return True
     return False
 
-def tessellate(points): #tessellate an array of points, shape: np.array([[0, 0, 0], [0, 1.1, 0], [1, 0, 0], [1, 1, 0]])
+def tessellate(points):
+    '''Returns Delaunay tesselation an array of points, input shape: np.array([[0, 0, 0], ..., [1, 1, 0]])'''
     return Delaunay(points)
 
 def keypointLookup(rgb):
+    '''Given an input RGB triplet, returns its output triplet'''
     return np.asarray(keypointDict[rgb[0], rgb[1], rgb[2]])
 
 def barycentricCoordinates(r, r1, r2, r3, r4):
+    '''Given a point r inside the tetrahedron formed by r1-r4, calculates r's Barycentric Coordinates'''
     lambda1 = lambda2 = lambda3 = lambda4 = 0
     T = np.matrix([[ r1[0]-r4[0], r2[0]-r4[0], r3[0]-r4[0] ],
                    [ r1[1]-r4[1], r2[1]-r4[1], r3[1]-r4[1] ],
@@ -36,18 +42,12 @@ def barycentricCoordinates(r, r1, r2, r3, r4):
     return lambda1, lambda2, lambda3, lambda4
 
 def interpolate(p, a, b, c, d):
-    #print(f'interpolate args = {p}, {a}, {b}, {c}, {d}')
-    if isInvalid(a) or isInvalid(b) or isInvalid(c) or isInvalid(d):
-        aRGB = bRGB = cRGB = dRGB = np.array([-1.5, -1.5, -1.5])
+    '''p is a point inside the tetrahedron formed by points a-d. Performs a Barycentric interpolation.'''
+    if isInvalid(a) or isInvalid(b) or isInvalid(c) or isInvalid(d): #TODO: add more complex out-of-gamut handling
+        aRGB = bRGB = cRGB = dRGB = nv
         weightA = weightB = weightC = weightD = 1
     else:
         weightA, weightB, weightC, weightD = barycentricCoordinates(p, a, b, c, d)
-
-        #TESTING - weight validation check
-        weightSum = weightA + weightB + weightC + weightD
-        #if not(weightSum >= 0.99 and weightSum <= 1.01):
-            #print("ERROR: weights do not add to 1")
-            #print(f'       sum={weightSum}')
 
         aRGB = keypointLookup(a)
         bRGB = keypointLookup(b)
@@ -56,11 +56,10 @@ def interpolate(p, a, b, c, d):
 
     value = (aRGB * weightA) + (bRGB * weightB) + (cRGB * weightC) + (dRGB * weightD)
 
-    #print(f'RETURNING value: {value} from interpolate()')
     return value
 
 def getTetraVertices(p):
-    #print(f'simplices: {tessellation.points[tessellation.simplices[tessellation.find_simplex(p)]]}')
+    '''Given point p, returns points a,b,c,d forming the tetrahedron encompassing p.'''
     simplexIndex = tessellation.find_simplex(p)
     if simplexIndex == -1:
         print(f'## point {p} reported outside the hull, FAILING -retrying-', file=sys.stderr)
@@ -73,40 +72,36 @@ def getTetraVertices(p):
             #p = p_fuzzed
 
     vertices = tessellation.points[tessellation.simplices[simplexIndex]]
-    #print(f'vertices = {vertices} for point p = {p}')
     a, b, c, d = vertices[0], vertices[1], vertices[2], vertices[3],
 
-    #print(f'RETURNING VERTICES {a},{b},{c},{d} for point {p}')
     return a, b, c, d
 
 def generate3DLUT(size, cubeSize):
-    #print(f'size = {size}')
+    '''Generates a 3D LUT with size samples per channel, and cubeSize as the domain (usually 1.0)'''
     lut = np.empty((size, size, size, 3), order='C')
 
-    for red in range(size):
+    for blue in range(size):
         for green in range(size):
-            for blue in range(size):
+            for red in range(size):
                 r, g, b = red*cubeSize/(size-1), green*cubeSize/(size-1), blue*cubeSize/(size-1)
-                #print(f'======STARTING 3D LUT GENERATION for point: red={r}, green={g}, blue={b}======')
                 p = np.array([r, g, b])
                 a, b, c, d = getTetraVertices(p)
 
-                #print(f'VERTICIES for point {p}:\n    a={a}, b={b}, c={c}, d={d}')
-
                 lut[red, green, blue] = interpolate(p, a, b, c, d)
-                #print(f'INTERPOLATION RESULTS: RGB={lut[red, green, blue]}\n\n')
     return lut
 
 def printCubeFile(lutArray):
+    '''Prints a given 3D LUT in .cube format.'''
     print("# header")
     print(f'LUT_3D_SIZE {lutArray.shape[0]}')
 
-    for b in lutArray:
-        for g in b:
-            for r in g:
-                print(f'{r[0]} {r[1]} {r[2]}') #does this work?
+    for slice in lutArray:
+        for line in slice:
+            for point in line:
+                print(f'{point[2]} {point[1]} {point[0]}') #SWAPPED ¯\_(ツ)_/¯
 
 def loadKeypointsFromCSV(filename):
+    '''Loads keypoints from a CSV. Format: rIn,gIn,bIn,rOut,gOut,bOut, disregards first line.'''
     with open(filename) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         line_count = 0
@@ -124,11 +119,12 @@ def loadKeypointsFromCSV(filename):
     return
 
 def getAllKeypointsAsNumpyArray():
+    '''Extracts keypoint input positions from the global input-output dict.'''
     arry = np.asarray(list(keypointDict.keys()), dtype=float)
-    #print(f'arry: {arry}')
     return arry
 
 def insertKeypoint(r, g, b, x, y, z):
+    '''Adds a keypoint input-output to the global dict.'''
     keypointDict.update({ (float(r), float(g), float(b)): (float(x), float(y), float(z)) })
     return 0
 
@@ -140,9 +136,6 @@ def main():
     global keypointDict
     keypointDict = {}
 
-    #global keypointSet
-    #keypointSet = np.zeros()
-
     global tessellation
 
     #print("bla")
@@ -151,7 +144,6 @@ def main():
     #list(np.asarray(keyAsTuple, dtype=np.float64)
 
     keypoints = getAllKeypointsAsNumpyArray()
-    #print(f'keypoints: {keypoints}')
     tessellation = tessellate(keypoints)
     printCubeFile(generate3DLUT(9, 1.0))
 
