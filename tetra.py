@@ -2,12 +2,15 @@ import numpy as np
 from scipy.spatial import Delaunay
 import math
 import csv
+import sys
 
 #GLOBAL DEFINITIONS:
 nv = np.array([-1.0, -1.0, -1.0]) #value to use for out-of-gamut points
 
 #TODO: proper gamut mapping
-#TODO: Remove hard coded args, get args from CLI
+#add documentation
+#R and B are getting swapped on input?
+#Remove hard coded args, get args from CLI
 
 def isInvalid(point):
     '''Given a point (type np.array, size 3), determines if the point is valid or out-of-gamut.'''
@@ -59,7 +62,14 @@ def getTetraVertices(p):
     '''Given point p, returns points a,b,c,d forming the tetrahedron encompassing p.'''
     simplexIndex = tessellation.find_simplex(p)
     if simplexIndex == -1:
-        return nv, nv, nv, nv
+        print(f'## point {p} reported outside the hull, FAILING -retrying-', file=sys.stderr)
+        #p_fuzzed = p[0:3] * 0.99 + 0.005
+        #simplexIndex = tessellation.find_simplex(p_fuzzed)
+        if simplexIndex == -1:
+            #print(f'## fuzzed point {p_fuzzed} reported outside the hull, failing', file=sys.stderr)
+            return nv, nv, nv, nv
+        #else:
+            #p = p_fuzzed
 
     vertices = tessellation.points[tessellation.simplices[simplexIndex]]
     a, b, c, d = vertices[0], vertices[1], vertices[2], vertices[3],
@@ -119,12 +129,19 @@ def insertKeypoint(r, g, b, x, y, z):
     return 0
 
 def main():
+    #Process args
+    inputPath = sys.argv[1]
+
+    #lut dictionary --
     global keypointDict
     keypointDict = {}
 
     global tessellation
 
-    loadKeypointsFromCSV('Datasets/keypointsKodak.csv')
+    #print("bla")
+    loadKeypointsFromCSV(inputPath)
+
+    #list(np.asarray(keyAsTuple, dtype=np.float64)
 
     keypoints = getAllKeypointsAsNumpyArray()
     tessellation = tessellate(keypoints)
