@@ -2,12 +2,13 @@ import numpy as np
 from scipy.spatial import Delaunay
 import math
 import csv
+import sys
 
 nv = np.array([-1.0, -1.0, -1.0])
 
 #TODO: proper gamut mapping
 #add documentation
-#R and B are getting swapped *somewhere*
+#R and B are getting swapped on input?
 
 def isInvalid(point):
     if point[0] == nv[0] or point[1] == nv[1] or point[2] == nv[2]:
@@ -62,7 +63,14 @@ def getTetraVertices(p):
     #print(f'simplices: {tessellation.points[tessellation.simplices[tessellation.find_simplex(p)]]}')
     simplexIndex = tessellation.find_simplex(p)
     if simplexIndex == -1:
-        return nv, nv, nv, nv
+        print(f'## point {p} reported outside the hull, FAILING -retrying-', file=sys.stderr)
+        #p_fuzzed = p[0:3] * 0.99 + 0.005
+        #simplexIndex = tessellation.find_simplex(p_fuzzed)
+        if simplexIndex == -1:
+            #print(f'## fuzzed point {p_fuzzed} reported outside the hull, failing', file=sys.stderr)
+            return nv, nv, nv, nv
+        #else:
+            #p = p_fuzzed
 
     vertices = tessellation.points[tessellation.simplices[simplexIndex]]
     #print(f'vertices = {vertices} for point p = {p}')
@@ -125,6 +133,9 @@ def insertKeypoint(r, g, b, x, y, z):
     return 0
 
 def main():
+    #Process args
+    inputPath = sys.argv[1]
+
     #lut dictionary --
     global keypointDict
     keypointDict = {}
@@ -135,7 +146,7 @@ def main():
     global tessellation
 
     #print("bla")
-    loadKeypointsFromCSV('Datasets/keypointsKodak2.csv')
+    loadKeypointsFromCSV(inputPath)
 
     #list(np.asarray(keyAsTuple, dtype=np.float64)
 
